@@ -5,6 +5,7 @@
 * Huy HUYNH
 * Jeremie CHATTOU
 * Didier BERTILLE
+* Jean-Pierre PERTUS
 
 ##Enoncé
 En vous basant sur les transformations de requêtes SPARQL en DSL
