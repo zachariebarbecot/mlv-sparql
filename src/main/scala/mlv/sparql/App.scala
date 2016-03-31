@@ -1,9 +1,10 @@
 package mlv.sparql
 
 import org.apache.spark.sql.SQLContext
-
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
+import org.apache.jena.query.QueryFactory
+import org.apache.jena.sparql.algebra.Algebra
 
 object App {
 
@@ -28,7 +29,6 @@ object App {
     val sqlContext = new SQLContext(sc)
     import sqlContext.implicits._
 
-    // Create RDD objects and register them as tables
     val univ = sc.textFile(FILE_UNIV).map(_.split(" ")).map(u => Univ(u(0), u(1), u(2))).toDF
     univ.registerTempTable("univ")
     val props = sc.textFile(FILE_PROPS).map(_.split(" ")).map(p => Props(p(0).trim.toLong, p(1))).toDF
@@ -39,5 +39,20 @@ object App {
     dict.registerTempTable("dict")
     val encoded = sc.textFile(FILE_ENCODED).map(_.split(" ")).map(e => Encoded(e(0).trim.toLong, e(1).trim.toLong, e(2).trim.toLong)).toDF
     encoded.registerTempTable("encoded")
+
+    val qstr = """PREFIX  lubm: <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#>
+        PREFIX  rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        SELECT  ?x ?y
+        WHERE
+          {  ?x rdf:type lubm:Chair .
+             ?y rdf:type lubm:Department .
+             ?x lubm:worksFor ?y .
+             ?y lubm:subOrganizationOf <http://www.University0.edu>
+          }"""
+    val query = QueryFactory.create(qstr)
+    val op = Algebra.compile(query)
+    println(op)
+
+    sc.stop
   }
 }
