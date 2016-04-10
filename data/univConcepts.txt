@@ -41,4 +41,3 @@
 1140850688 <http://www.univ-mlv.fr/~ocure/lubm.owl#Course>
 1174405120 <http://www.univ-mlv.fr/~ocure/lubm.owl#GraduateCourse>
 1207959552 <http://www.univ-mlv.fr/~ocure/lubm.owl#Research>
-
