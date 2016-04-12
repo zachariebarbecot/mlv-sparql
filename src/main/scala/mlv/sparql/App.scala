@@ -5,6 +5,13 @@ import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.jena.query.QueryFactory
 import org.apache.jena.sparql.algebra.Algebra
+import org.apache.jena.graph.Node
+import org.apache.jena.sparql.syntax.ElementGroup
+import org.apache.jena.sparql.syntax.Element
+import org.apache.jena.sparql.syntax.ElementPathBlock
+import org.apache.jena.sparql.core.TriplePath
+import scala.collection.JavaConversions._
+
 object App {
 
   val FILE_UNIV = "data/univ1.nt"
@@ -48,9 +55,30 @@ object App {
              ?y lubm:subOrganizationOf <http://www.University0.edu>
           }"""
     val query = QueryFactory.create(qstr)
-    val op = Algebra.compile(query)
-    scala.tools.nsc.io.File(FILE_ALGEBRA).writeAll(op.toString())
-    val algebra = sc.textFile(FILE_ALGEBRA).map(_.split("\n"))
+    // On test si query est un select
+    if (query.isSelectType()) {
+      var result = List[Node]()
+      val elements = query.getQueryPattern.asInstanceOf[ElementGroup].getElements
+      elements.foreach { elem =>
+        val pathBlock = elem.asInstanceOf[ElementPathBlock]
+        pathBlock.getPattern().getList().foreach { pb =>
+          if (!result.contains(pb.getSubject())) {
+            result = pb.getSubject :: result
+          }
+        }
+      }
+      result = result.reverse
+      println(result);
+
+      val op = Algebra.compile(query)
+      scala.tools.nsc.io.File(FILE_ALGEBRA).writeAll(op.toString())
+      val algebra = sc.textFile(FILE_ALGEBRA).map(_.split("\n"))
+      algebra.collect.foreach { x =>
+        x.foreach { e =>
+          println(e)
+        }
+      }
+    }
 
     //Utilisation des dsl dataframes
     /*
