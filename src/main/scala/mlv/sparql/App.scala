@@ -20,7 +20,8 @@ object App {
   val FILE_DICT = "data/univ1_dict.txt"
   val FILE_ENCODED = "data/univ1_encoded.txt"
   val FILE_ALGEBRA = "data/algebra.txt"
-  val FILE_RESULT = "data/result.txt"
+  val FILE_RESULT_ENCODED = "data/result_encoded"
+  val FILE_RESULT_DECODED = "data/result_decoded"
 
   case class Univ(s1: String, s2: String, s3: String)
   case class Props(l1: Long, s1: String)
@@ -45,43 +46,9 @@ object App {
     val dict = sc.textFile(FILE_DICT).map(_.split(" ")).map(d => Dict(d(0), d(1).trim.toLong)).toDF
     val encoded = sc.textFile(FILE_ENCODED).map(_.split(" ")).map(e => Encoded(e(0).trim.toLong, e(1).trim.toLong, e(2).trim.toLong)).toDF
 
-    val qstr = """PREFIX  lubm: <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#>
-        PREFIX  rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        SELECT  ?x ?y
-        WHERE
-          {  ?x rdf:type lubm:Chair .
-             ?y rdf:type lubm:Department .
-             ?x lubm:worksFor ?y .
-             ?y lubm:subOrganizationOf <http://www.University0.edu>
-          }"""
-    val query = QueryFactory.create(qstr)
-    // On test si query est un select
-    if (query.isSelectType()) {
-      var result = List[Node]()
-      val elements = query.getQueryPattern.asInstanceOf[ElementGroup].getElements
-      elements.foreach { elem =>
-        val pathBlock = elem.asInstanceOf[ElementPathBlock]
-        pathBlock.getPattern().getList().foreach { pb =>
-          if (!result.contains(pb.getSubject())) {
-            result = pb.getSubject :: result
-          }
-        }
-      }
-      result = result.reverse
-      println(result);
 
-      val op = Algebra.compile(query)
-      scala.tools.nsc.io.File(FILE_ALGEBRA).writeAll(op.toString())
-      val algebra = sc.textFile(FILE_ALGEBRA).map(_.split("\n"))
-      algebra.collect.foreach { x =>
-        x.foreach { e =>
-          println(e)
-        }
-      }
-    }
+    // Utilisation DSL pour encoder
 
-    //Utilisation des dsl dataframes
-    /*
     val u1 = univ.select("*").withColumnRenamed("s1", "s").withColumnRenamed("s2", "p").withColumnRenamed("s3", "o")
     val s1 = dict.select("*").withColumnRenamed("s1", "s")
     val p1 = props.select("*").withColumnRenamed("s1", "p").withColumnRenamed("l1", "l2")
@@ -90,10 +57,20 @@ object App {
     val res = u1.join(s1, Seq("s")).select("l1", "p", "o")
     val res1 = res.join(p1, Seq("p")).select("l1", "l2", "o")
     val res2 = res1.join(c1, Seq("o")).select("l1", "l2", "l3")
-    val res3 = res2.unionAll(encoded)
-    res3.rdd.coalesce(1, true).saveAsTextFile(FILE_RESULT)
-		*/
-
+    res2.map(x => x(0) + " " + x(1) +  " " +  x(2)).coalesce(1,true).saveAsTextFile(FILE_RESULT_ENCODED)
+  
+    // Utilisation DSL pour decoder
+    val e11 = encoded.select("*").withColumnRenamed("l1", "s").withColumnRenamed("l2", "p").withColumnRenamed("l3", "o")
+    val s11 = dict.select("*").withColumnRenamed("l1", "s")
+    val p11 = props.select("*").withColumnRenamed("l1", "p").withColumnRenamed("s1", "s2")
+    val c11 = concepts.select("*").withColumnRenamed("l1", "o").withColumnRenamed("s1", "s3")
+    
+    val resb = e11.join(s11, Seq("s")).select("s1", "p", "o")
+    val res1b = resb.join(p11, Seq("p")).select("s1", "s2", "o")
+    val res2b = res1b.join(c11, Seq("o")).select("s1", "s2", "s3")
+    res2b.map(x => x(0) + " " + x(1) +  " " +  x(2)).coalesce(1,true).saveAsTextFile(FILE_RESULT_DECODED)
+    
+    
     sc.stop
   }
 }
